@@ -6,16 +6,28 @@ from datetime import datetime, date
 import os
 import sys
 from urllib import request
+from typing import Union
 
 # File for getting the energi prices for Denmark West Market. 
 # It writes the energy prices to a json file in the data folder.
 # It also shows the data as a I3 blocks compatible output.
 
-url = "https://nrgi.dk/api/common/pricehistory?region=DK1&date="
-COLORS = ["#25AA00", "#72A300", "#BD9A00", "#EA7500", "#FF4400"]
 
-MIN_COLOR = 200 # lower bound for øre price
-MAX_COLOR = 800 # upper bound for øre price
+url = "https://nrgi.dk/api/common/pricehistory?region=DK1&date=" # This is for Denmark West data
+# url = "https://nrgi.dk/api/common/pricehistory?region=DK2&date=" # This is for Denmark East data
+
+COLORS = [
+            '#00FF00', '#11FF00', '#22FF00', '#33FF00', '#44FF00', '#55FF00', 
+            '#66FF00', '#77FF00', '#88FF00', '#99FF00', '#AAFF00', '#BBFF00',
+            '#CCFF00', '#DDFF00', '#EEFF00', '#FFFF00', '#FFEE00', '#FFDD00',
+            '#FFCC00', '#FFBB00', '#FFAA00', '#FF9900', '#FF8800', '#FF7700',
+            '#FF6600', '#FF5500', '#FF4400', '#FF3300', '#FF2200', '#FF1100',
+            '#FF0000'
+        ]
+
+
+MIN_COLOR = 250 # lower bound for øre price
+MAX_COLOR = 700 # upper bound for øre price
 
 def get_energi_prices(date_obj: date = date.today()) -> dict:
     """Get the prices for the given data.
@@ -51,7 +63,15 @@ def write_prices_file(date_obj: date = date.today()) -> str:
         file.write(json.dumps(prices))
     return filename 
 
-def read_prices_file(date_obj: date = date.today()):
+def read_prices_file(date_obj: date = date.today()) -> Union[dict, None]:
+    """Read the json file for the given date.
+
+    Args:
+        date_obj (date, optional): The data object. Defaults to date.today().
+
+    Returns:
+        Union[dict, None]: return the date if it is there.
+    """
     filename = f"prices-{date_obj.isoformat()}.json"
     path = os.path.join(os.path.dirname(__file__), "data", filename)
     if not os.path.exists(path):
@@ -76,56 +96,63 @@ def format_price(price: int) -> str:
 
     return f"{price/100:.2f} DKK"
 
-def output_hour_price(date_obj: date = date.today(), hour: int = datetime.now().hour) -> int:
-    """Print the energy price for the given data and hour.
+def output_hour_price(date_obj: date = date.today(), hour: int = datetime.now().hour) -> str:
+    """Print the energy price for the given data and hour as a pango markup element.
 
     Args:
         date_obj (date, optional): The date. Defaults to date.today().
         hour (int, optional): Which hour to select. Defaults to datetime.now().hour.
 
     Returns:
-        int: price in øre
+        str: The pango markup element
     """
     prices = read_prices_file(date_obj)
+    if prices == None:
+        print("<span bgcolor=\"#FF0000\" fgcolor=\"#000000\"> Error loading data ...</span>")
     current_hour_price = prices["prices"][hour]["priceInclVat"]
-    # print(f"kW/h {format_price(current_hour_price)} dkk \n\n{output_hour_price_background()}")
-    print(f"<span bgcolor=\"{output_hour_price_background()}\"> kW/h {format_price(current_hour_price)} </span>")
+    print(f"<span fgcolor=\"black\" bgcolor=\"{output_background(current_hour_price)}\"> kW/h {format_price(current_hour_price)} </span>")
 
-def output_hour_price_background(date_obj: date = date.today(), hour: int = datetime.now().hour) -> str:
-    prices = read_prices_file(date_obj)
-    current_hour_price = prices["prices"][hour]["priceInclVat"]
+def output_background(price: int) -> str:
+    """Take a integer value and return a HEX color. Uses the MIN_COLOR and MAX_COLOR values to decide range of colors.
 
+    Args:
+        current_hour_price (int): the price
 
-    if current_hour_price < MIN_COLOR:
+    Returns:
+        str: _description_
+    """
+    if price <= MIN_COLOR:
         return(COLORS[0])
-    elif current_hour_price > MAX_COLOR:
+    elif price >= MAX_COLOR:
         return(COLORS[-1])
     else:
-        vrange = MAX_COLOR - MIN_COLOR
-        colors = COLORS[1:-2]
+        # Split the colors into a range and select a color based on which interval they hit.
+        colors = COLORS[1:-2] # remove the first and second color
+        vrange = MAX_COLOR - MIN_COLOR # create the range
         vrange_interval = vrange // len(colors)
-        index = (current_hour_price - MIN_COLOR) // vrange_interval
-        #print(f"index is {index+1} and vrange is {vrange_interval} and value is {MIN_COLOR + ((index+1) * vrange_interval)}")
+        index = (price - MIN_COLOR) // vrange_interval - 1
         return(colors[index])
 
 
 
 def output_day_price(date_obj: date = date.today()) -> str:
-    """Output the day prices as a str
+    """
+    Output the day prices as a html table. Needs to be change later.
 
-    Args:
-        date_obj (date, optional): Date you want to see. Defaults to date.today().
-
-    Returns:
-        str: str ouput of the day.
+    :param date_obj (date, optional): Date you want to see. Defaults to date.today().
+    :return str: str ouput of the day.
     """
     prices = read_prices_file(date_obj)
-    day = {}
-    for  hour, data in enumerate(prices["prices"]):
-        # Add one since it 0 indexes
-        day[hour+1] = format_price(data["priceInclVat"])
-    print(day)
+    if prices == None:
+        print("<span bgcolor=\"#FF0000\" fgcolor=\"#000000\"> Error loading data ...</span>")
+    day = []
+    day.append(f"The prices for {date_obj.isoformat()} are: \n")
+    for hour, data in enumerate(prices["prices"]):
 
+        # day.append(f"<tr><td>{hour}</td><td style=\"background-color: {output_background(data['priceInclVat'])}\"> {data['priceInclVat']} </td></tr>\n")
+        day.append(f"<span color=\"{output_background(data['priceInclVat'])}\">Hour: {hour:02d} :  {format_price(data['priceInclVat'])}</span>\n")
+    # print(''.join(day))
+    sys.stdout.write(''.join(day))
 
 if __name__ == "__main__":
     args = sys.argv[1:]
@@ -133,17 +160,17 @@ if __name__ == "__main__":
         Print the energy price for the current hour.
         commands:
                 -h, h: Help menu.
-                now: current price for the hour
-                background: The color background for the current hour
+                now: Current price for the hour as a pango element
+                day: Print the day as a html table rows
         """
     if len(args) < 1:
         print(menu)
     elif args[0] == "now":
         output_hour_price()
-    elif args[0] == "background":
-        output_hour_price_background()
+    elif args[0] == "day":
+        output_day_price()
     elif args[0] == '-h' or args[0] == "h":
         print(menu)
     else:
-        print("Please use the arg 'now' or 'background'")
+        print("Please use the arg 'now' or 'day'")
     
