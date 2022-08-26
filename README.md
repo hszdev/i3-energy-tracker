@@ -2,6 +2,8 @@
 
 Provides a script for showing how much energy costs right now. This is done using the [Enrgi West API](https://nrgi.dk/api/common/pricehistory?region=DK1&date=2022-8-24). It returns the price for the current hour and stores it in a JSON object. Maybe changing it later to be a SQLite database.
 
+# Example
+![2022-08-26T07:54:32 CEST](https://user-images.githubusercontent.com/18546761/186832156-ad1099d4-094f-4e8c-8e4f-28a7e7d47348.png)
 
 # Using
 Clone the repo into your i3blocks folder (typically `~/.config/i3blocks/` or `~/.config/i3blocks/scripts`). Then add the block below into your `config` file:
@@ -17,6 +19,7 @@ interval=600
 refresh your i3 bar (`alt+shift+r`)
 
 # Todo:
+
 
 Some todo items:
 - [x] Pick some better colors for the block (Maybe use RGBA?).
