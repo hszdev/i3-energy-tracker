@@ -1,4 +1,4 @@
-# I3 blocks kW/h price for energi
+# I3 blocks kW/h price for energy
 
 Provides a script for showing how much energy costs right now. This is done using the [Enrgi West API](https://nrgi.dk/api/common/pricehistory?region=DK1&date=2022-8-24). It returns the price for the current hour and stores it in a JSON object. Maybe changing it later to be a SQLite database.
 
