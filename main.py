@@ -8,6 +8,7 @@ import sys
 from urllib import request
 from typing import Union
 
+
 # File for getting the energi prices for Denmark West Market. 
 # It writes the energy prices to a json file in the data folder.
 # It also shows the data as a I3 blocks compatible output.
@@ -24,6 +25,9 @@ COLORS = [
             '#FF6600', '#FF5500', '#FF4400', '#FF3300', '#FF2200', '#FF1100',
             '#FF0000'
         ]
+
+class NoDataException(Exception):
+    """No data available. API might be down?"""
 
 
 MIN_COLOR = 250 # lower bound for øre price
@@ -43,7 +47,7 @@ def get_energi_prices(date_obj: date = date.today()) -> dict:
     """
     prices = request.urlopen(url+date_obj.isoformat())
     if prices.status != 200:
-        raise ValueError(f"Status code {prices.status_code}: Couldn't get the data for energi prices.")
+        raise NoDataException(f"Status code {prices.status_code}: Couldn't get the data for energi prices.")
     return json.loads(prices.read())
 
 
@@ -59,8 +63,11 @@ def write_prices_file(date_obj: date = date.today()) -> str:
     filename = f"prices-{date_obj.isoformat()}.json"
     path = os.path.join(os.path.dirname(__file__), "data", filename)
     with open(path, "w") as file:
-        prices = get_energi_prices(date_obj)
-        file.write(json.dumps(prices))
+        try:
+            prices = get_energi_prices(date_obj)
+            file.write(json.dumps(prices))
+        except NoDataException as e:
+            raise NoDataException(e)
     return filename 
 
 def read_prices_file(date_obj: date = date.today()) -> Union[dict, None]:
@@ -76,12 +83,16 @@ def read_prices_file(date_obj: date = date.today()) -> Union[dict, None]:
     path = os.path.join(os.path.dirname(__file__), "data", filename)
     if not os.path.exists(path):
         # If there is no data file then write them to it.
-        write_prices_file(date_obj)
+        try:
+            write_prices_file(date_obj)
+        except NoDataException as e:
+            return None
+    # TODO: Handle the download of correct data better if the data file is corrupt
     with open(path, "r") as file:
         try:
             return json.loads(file.read())
         except json.JSONDecodeError as e:
-            print("Failed to parse JSON data.")
+            write_prices_file(date_obj)
             return None
 
 def format_price(price: int) -> str:
@@ -91,13 +102,13 @@ def format_price(price: int) -> str:
         price (int): The price
 
     Returns:
-        str: String reprensation of the price in dkk.
+        str: String representation of the price in dkk.
     """
 
     return f"{price/100:.2f} DKK"
 
 def output_hour_price(date_obj: date = date.today(), hour: int = datetime.now().hour) -> str:
-    """Print the energy price for the given data and hour as a pango markup element.
+    """Print the energy price for the given date and hour as a pango markup element.
 
     Args:
         date_obj (date, optional): The date. Defaults to date.today().
@@ -113,7 +124,7 @@ def output_hour_price(date_obj: date = date.today(), hour: int = datetime.now().
     print(f"<span fgcolor=\"black\" bgcolor=\"{output_background(current_hour_price)}\"> kW/h {format_price(current_hour_price)} </span>")
 
 def output_background(price: int) -> str:
-    """Take a integer value and return a HEX color. Uses the MIN_COLOR and MAX_COLOR values to decide range of colors.
+    """Take an integer value and return a HEX color. Uses the MIN_COLOR and MAX_COLOR values to decide range of colors.
 
     Args:
         current_hour_price (int): the price
