@@ -11,7 +11,7 @@ Clone the repo into your i3blocks folder (typically `~/.config/i3blocks/` or `~/
 ```
 [Energy]
 markup=pango
-command=~/.config/i3blocks/i3-energi-tracker/main.py now
+command=~/.config/i3blocks/i3-energy-tracker/main.py now
 background=#000000
 interval=600
 ```
